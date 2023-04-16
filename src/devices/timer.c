@@ -86,14 +86,14 @@ timer_elapsed(int64_t then)
    be turned on. */
 void timer_sleep(int64_t ticks)
 {
-  // int64_t start = timer_ticks();
+  int64_t start = timer_ticks();
 
   ASSERT(intr_get_level() == INTR_ON);
   // ahmed
   if (ticks >= 0)
   {
     intr_disable();
-    thread_sleep(ticks);
+    thread_sleep(ticks + start);
     intr_set_level(INTR_ON);
   }
   // ahmed
@@ -165,6 +165,9 @@ timer_interrupt(struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick();
+  // ahmed
+  wake_threads(ticks);
+  // ahmed
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

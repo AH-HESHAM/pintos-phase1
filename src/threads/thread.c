@@ -75,7 +75,8 @@ static tid_t allocate_tid(void);
 
 // ahmed
 void thread_sleep(int64_t time);
-void sleep_dec_time(void);
+void wake_threads(int64_t time);
+bool wake_early(const struct list_elem *a, const struct list_elem *b, void *aux);
 // ahmed
 
 /* Initializes the threading system by transforming the code
@@ -143,32 +144,37 @@ void thread_tick(void)
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return();
   // ahmed
-  sleep_dec_time();
+  // wake_threads();
   // ahmed
 }
 
 // ahmed
+bool wake_early(const struct list_elem *a, const struct list_elem *b, void *aux)
+{
+  struct thread *ta = list_entry(a, struct thread, sleep_elem);
+  struct thread *tb = list_entry(b, struct thread, sleep_elem);
+  return ta->sleep_for < tb->sleep_for;
+}
 void thread_sleep(int64_t time)
 {
   struct thread *t = thread_current();
   t->sleep_for = time;
-  // list_remove(&t->elem);
-  list_push_back(&sleep_list, &t->sleep_elem);
+  list_insert_ordered(&sleep_list, &t->sleep_elem, wake_early, NULL);
   thread_block();
-  // the problem here block and stay blocked
 }
-void sleep_dec_time(void)
+void wake_threads(int64_t time)
 {
   for (struct list_elem *iter = list_begin(&sleep_list); iter != list_end(&sleep_list); iter = list_next(iter))
   {
     struct thread *t = list_entry(iter, struct thread, sleep_elem);
     struct list_elem *temp = iter;
-    t->sleep_for--;
-    if (t->sleep_for <= 0)
+    if (t->sleep_for <= time)
     {
       thread_unblock(t);
       list_remove(temp);
     }
+    else
+      break;
   }
 }
 // ahmed
