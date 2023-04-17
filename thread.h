@@ -108,7 +108,9 @@ extern bool thread_mlfqs;
 
 // ahmed
 void thread_sleep(int64_t time);
+void wake_threads(int64_t time);
 // ahmed
+
 
 void thread_init(void);
 void thread_start(void);

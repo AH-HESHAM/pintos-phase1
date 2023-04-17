@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+//#define DEBUG  true
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -75,7 +76,8 @@ static tid_t allocate_tid(void);
 
 // ahmed
 void thread_sleep(int64_t time);
-void sleep_dec_time(void);
+void wake_threads(int64_t time);
+bool wake_early(const struct list_elem *a, const struct list_elem *b, void *aux);
 // ahmed
 
 /* Initializes the threading system by transforming the code
@@ -143,36 +145,45 @@ void thread_tick(void)
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return();
   // ahmed
-  sleep_dec_time();
+  // wake_threads();
   // ahmed
 }
 
 // ahmed
+bool wake_early(const struct list_elem *a, const struct list_elem *b, void *aux)
+{
+  struct thread *ta = list_entry(a, struct thread, sleep_elem);
+  struct thread *tb = list_entry(b, struct thread, sleep_elem);
+  return ta->sleep_for < tb->sleep_for;
+}
 void thread_sleep(int64_t time)
 {
   struct thread *t = thread_current();
   t->sleep_for = time;
-  // list_remove(&t->elem);
-  list_push_back(&sleep_list, &t->sleep_elem);
+  list_insert_ordered(&sleep_list, &t->sleep_elem, wake_early, NULL);
   thread_block();
-  // the problem here block and stay blocked
 }
-void sleep_dec_time(void)
+void wake_threads(int64_t time)
 {
   for (struct list_elem *iter = list_begin(&sleep_list); iter != list_end(&sleep_list); iter = list_next(iter))
   {
     struct thread *t = list_entry(iter, struct thread, sleep_elem);
     struct list_elem *temp = iter;
-    t->sleep_for--;
-    if (t->sleep_for <= 0)
+    if (t->sleep_for <= time)
     {
       thread_unblock(t);
       list_remove(temp);
     }
+    else
+      break;
   }
 }
 // ahmed
-
+bool compare_elem(const struct list_elem *a, const struct list_elem *b , void *aux UNUSED){
+    const int a_member = (list_entry(a, struct thread, elem)->priority);
+    const int b_member = (list_entry(b, struct thread, elem)->priority);  
+    return a_member > b_member;
+}
 /* Prints thread statistics. */
 void thread_print_stats(void)
 {
@@ -230,7 +241,10 @@ tid_t thread_create(const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock(t);
-
+  struct  thread *cur = thread_current();
+  if(t->priority > cur->priority){
+    thread_yield();
+  }
   return tid;
 }
 
@@ -255,6 +269,9 @@ void thread_block(void)
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
+
+
+
 void thread_unblock(struct thread *t)
 {
   enum intr_level old_level;
@@ -263,7 +280,8 @@ void thread_unblock(struct thread *t)
 
   old_level = intr_disable();
   ASSERT(t->status == THREAD_BLOCKED);
-  list_push_back(&ready_list, &t->elem);
+  //list_push_back(&ready_list, &t->elem);
+  list_insert_ordered(&ready_list, &t->elem , &compare_elem , NULL);
   t->status = THREAD_READY;
   intr_set_level(old_level);
 }
@@ -330,9 +348,22 @@ void thread_yield(void)
   ASSERT(!intr_context());
 
   old_level = intr_disable();
-  if (cur != idle_thread)
-    list_push_back(&ready_list, &cur->elem);
+  if (cur != idle_thread){
+    //list_push_back(&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, &cur->elem , &compare_elem , NULL);
+  }  
   cur->status = THREAD_READY;
+  /*
+  struct list_elem *e;
+    for (e = list_begin(&ready_list); e != list_end(&ready_list);
+         e = list_next(e))
+    {
+        struct thread *t = list_entry(e, struct thread, elem);
+        if(DEBUG){
+            printf("%d ", t -> priority);
+        }
+    }
+  */  
   schedule();
   intr_set_level(old_level);
 }
@@ -356,9 +387,14 @@ void thread_foreach(thread_action_func *func, void *aux)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority)
 {
-  thread_current()->priority = new_priority;
-}
+    int old_priority = thread_current()->priority;
+    thread_current()->priority = new_priority;
 
+    if( new_priority < old_priority ){  
+        thread_yield();
+    }
+
+}
 /* Returns the current thread's priority. */
 int thread_get_priority(void)
 {
