@@ -208,12 +208,37 @@ lock_init (struct lock *lock)
 void
 lock_acquire (struct lock *lock)
 {
-  ASSERT (lock != NULL);
-  ASSERT (!intr_context ());
-  ASSERT (!lock_held_by_current_thread (lock));
+    ASSERT (lock != NULL);
+    ASSERT (!intr_context ());
+    ASSERT (!lock_held_by_current_thread (lock));
 
-  sema_down (&lock->semaphore);
-  lock->holder = thread_current ();
+    // if waits
+    // t1 << a << t2 << b << t3
+
+   
+    struct thread *used_thread = thread_current();
+    struct thread *parent = lock -> holder;
+
+    if(parent != NULL){
+        list_insert_ordered(&parent -> waiters, &thread_current () -> lock_waiter, &compare_elem2 , NULL);
+    }
+
+    while(parent != NULL){
+        
+        if( used_thread -> priority > parent -> priority ){
+            parent -> priority = used_thread -> priority;
+        } else {
+            break;
+        }
+        parent = parent -> waited_lock -> holder;
+    
+    }
+    used_thread -> waited_lock = lock;
+
+    sema_down (&lock->semaphore);
+
+
+    lock->holder = thread_current ();
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -244,11 +269,26 @@ lock_try_acquire (struct lock *lock)
 void
 lock_release (struct lock *lock) 
 {
-  ASSERT (lock != NULL);
-  ASSERT (lock_held_by_current_thread (lock));
+    ASSERT (lock != NULL);
+    ASSERT (lock_held_by_current_thread (lock));
 
-  lock->holder = NULL;
-  sema_up (&lock->semaphore);
+    struct list_elem *e;
+    struct list waiters = lock -> holder -> waiters;
+    thread_current() -> priority = thread_current() -> initial_priority;
+    struct thread *waiter_thread;
+    for (e = list_begin(&waiters); e != list_end(&waiters); e = list_next(e))
+    {
+        waiter_thread = list_entry(e, struct thread, lock_waiter);
+        ASSERT(is_thread(waiter_thread));
+        if( waiter_thread -> waited_lock == lock ){
+            list_remove(e);
+        } else if( thread_current() -> priority < waiter_thread -> priority ){
+            thread_current() -> priority = waiter_thread -> priority;
+        }
+    }
+
+    lock -> holder = NULL;
+    sema_up (&lock->semaphore);
 }
 
 /* Returns true if the current thread holds LOCK, false

@@ -376,8 +376,7 @@ void thread_foreach(thread_action_func *func, void *aux)
 
   ASSERT(intr_get_level() == INTR_OFF);
 
-  for (e = list_begin(&all_list); e != list_end(&all_list);
-       e = list_next(e))
+  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
   {
     struct thread *t = list_entry(e, struct thread, allelem);
     func(t, aux);
@@ -387,11 +386,13 @@ void thread_foreach(thread_action_func *func, void *aux)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority)
 {
-    int old_priority = thread_current()->priority;
-    thread_current()->priority = new_priority;
+    int priority = thread_current()->priority;
+    thread_current()->initial_priority = new_priority;
 
-    if( new_priority < old_priority ){  
-        thread_yield();
+    if( new_priority < priority ){  
+      thread_yield();
+    } else {
+      thread_current()->priority = new_priority;
     }
 
 }
@@ -516,6 +517,12 @@ init_thread(struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *)t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+
+  // priority sch
+  t->initial_priority = priority;
+  t->waited_lock = NULL;
+  list_init(&t -> waiters);
+  // end priority sch
 
   old_level = intr_disable();
   list_push_back(&all_list, &t->allelem);

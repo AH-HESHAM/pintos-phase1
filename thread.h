@@ -82,8 +82,15 @@ struct thread
    char name[16];             /* Name (for debugging purposes). */
    uint8_t *stack;            /* Saved stack pointer. */
    int priority;              /* Priority. */
-   struct list_elem allelem;  /* List element for all threads list. */
+   
+   // priority scheduler
+   int initial_priority;   ///
+   struct lock *waited_lock;
+   struct list_elem lock_waiter;  // t2
+   struct list waiters;           // t1
+   // end priority scheduler
 
+   struct list_elem allelem;  /* List element for all threads list. */
    /* Shared between thread.c and synch.c. */
    struct list_elem elem; /* List element. */
 
