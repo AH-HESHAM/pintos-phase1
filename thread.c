@@ -368,6 +368,9 @@ void thread_yield(void)
   intr_set_level(old_level);
 }
 
+struct thread* get_idle(){
+  return idle_thread;
+}
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void thread_foreach(thread_action_func *func, void *aux)
@@ -390,6 +393,18 @@ void thread_set_priority(int new_priority)
     thread_current()->initial_priority = new_priority;
 
     if( new_priority < priority ){  
+      
+      struct list_elem *e;
+      thread_current() -> priority = thread_current() -> initial_priority;
+      struct thread *waiter_thread = list_entry(list_begin(&thread_current()->waiters), struct thread, lock_waiter);
+      for (e = list_begin(&thread_current() -> waiters); e != list_end(&thread_current() -> waiters); e = list_next(e))
+      {
+          waiter_thread = list_entry(e, struct thread, lock_waiter);
+          ASSERT(is_thread(waiter_thread));
+          if( thread_current() -> priority < waiter_thread -> priority ){
+              thread_current() -> priority = waiter_thread -> priority;
+          }
+      }
       thread_yield();
     } else {
       thread_current()->priority = new_priority;
@@ -618,6 +633,7 @@ schedule(void)
   if (cur != next)
     prev = switch_threads(cur, next);
   thread_schedule_tail(prev);
+  //printf("here %s %n" , thread_current()-> name , thread_current()->priority);
 }
 
 /* Returns a tid to use for a new thread. */
