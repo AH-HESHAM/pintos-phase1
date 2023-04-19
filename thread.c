@@ -11,7 +11,6 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
-//#define DEBUG  true
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -179,17 +178,22 @@ void wake_threads(int64_t time)
   }
 }
 // ahmed
-bool compare_elem(const struct list_elem *a, const struct list_elem *b , void *aux UNUSED){
-    const int a_member = (list_entry(a, struct thread, elem)->priority);
+
+bool compare_elem(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
+  const int a_member = (list_entry(a, struct thread, elem)->priority);
     const int b_member = (list_entry(b, struct thread, elem)->priority);  
     return a_member > b_member;
 }
+
+
 /* Prints thread statistics. */
 void thread_print_stats(void)
 {
   printf("Thread: %lld idle ticks, %lld kernel ticks, %lld user ticks\n",
          idle_ticks, kernel_ticks, user_ticks);
 }
+
+
 
 /* Creates a new kernel thread named NAME with the given initial
    PRIORITY, which executes FUNCTION passing AUX as the argument,
@@ -245,6 +249,7 @@ tid_t thread_create(const char *name, int priority,
   if(t->priority > cur->priority){
     thread_yield();
   }
+
   return tid;
 }
 
@@ -269,9 +274,6 @@ void thread_block(void)
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
-
-
-
 void thread_unblock(struct thread *t)
 {
   enum intr_level old_level;
@@ -371,6 +373,7 @@ void thread_yield(void)
 struct thread* get_idle(){
   return idle_thread;
 }
+
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void thread_foreach(thread_action_func *func, void *aux)
@@ -379,7 +382,8 @@ void thread_foreach(thread_action_func *func, void *aux)
 
   ASSERT(intr_get_level() == INTR_OFF);
 
-  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
+  for (e = list_begin(&all_list); e != list_end(&all_list);
+       e = list_next(e))
   {
     struct thread *t = list_entry(e, struct thread, allelem);
     func(t, aux);
@@ -389,7 +393,7 @@ void thread_foreach(thread_action_func *func, void *aux)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority)
 {
-    int priority = thread_current()->priority;
+   int priority = thread_current()->priority;
     thread_current()->initial_priority = new_priority;
 
     if( new_priority < priority ){  
@@ -409,8 +413,8 @@ void thread_set_priority(int new_priority)
     } else {
       thread_current()->priority = new_priority;
     }
-
 }
+
 /* Returns the current thread's priority. */
 int thread_get_priority(void)
 {
@@ -533,7 +537,7 @@ init_thread(struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
-  // priority sch
+    // priority sch
   t->initial_priority = priority;
   t->waited_lock = NULL;
   list_init(&t -> waiters);
@@ -633,7 +637,6 @@ schedule(void)
   if (cur != next)
     prev = switch_threads(cur, next);
   thread_schedule_tail(prev);
-  //printf("here %s %n" , thread_current()-> name , thread_current()->priority);
 }
 
 /* Returns a tid to use for a new thread. */
