@@ -168,6 +168,17 @@ timer_interrupt(struct intr_frame *args UNUSED)
   // ahmed
   wake_threads(ticks);
   // ahmed
+
+  //adv
+  if (thread_mlfqs)
+  {
+    mlfqs_inc_recent_cpu();
+	if (ticks % TIMER_FREQ == 0)
+	  mlfqs_update_load_avg_and_recent_cpu();
+	else if (ticks % 4 == 0)
+	  mlfqs_update_priority(thread_current());
+  }
+  //adv
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
@@ -207,7 +218,6 @@ static void
 real_time_sleep(int64_t num, int32_t denom)
 {
   /* Convert NUM/DENOM seconds into timer ticks, rounding down.
-
         (NUM / DENOM) s
      ---------------------- = NUM * TIMER_FREQ / DENOM ticks.
      1 s / TIMER_FREQ ticks
