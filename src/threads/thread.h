@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/fixed_point.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -82,8 +83,15 @@ struct thread
    char name[16];             /* Name (for debugging purposes). */
    uint8_t *stack;            /* Saved stack pointer. */
    int priority;              /* Priority. */
-   struct list_elem allelem;  /* List element for all threads list. */
+   
+   // priority scheduler
+   int initial_priority;   ///
+   struct lock *waited_lock;
+   struct list_elem lock_waiter;  // t2
+   struct list waiters;           // t1
+   // end priority scheduler
 
+   struct list_elem allelem;  /* List element for all threads list. */
    /* Shared between thread.c and synch.c. */
    struct list_elem elem; /* List element. */
 
@@ -91,6 +99,10 @@ struct thread
    struct list_elem sleep_elem;
    int64_t sleep_for;
    // ahmed
+    //aw
+   int nice;
+   fixed_t recent_cpu;
+   //aw
 
 #ifdef USERPROG
    /* Owned by userprog/process.c. */
@@ -110,6 +122,7 @@ extern bool thread_mlfqs;
 void thread_sleep(int64_t time);
 void wake_threads(int64_t time);
 // ahmed
+
 
 void thread_init(void);
 void thread_start(void);
@@ -136,10 +149,11 @@ void thread_foreach(thread_action_func *, void *);
 
 int thread_get_priority(void);
 void thread_set_priority(int);
-
+struct thread* get_idle(void);
 int thread_get_nice(void);
 void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
+void mlfqs_inc_recent_cpu();
 
 #endif /* threads/thread.h */
