@@ -10,11 +10,13 @@ int convert_to_fp(int x) {
 
 // Convert a fixed-point representation to the nearest integer
 int convert_to_int(int x) {
+    
     if (x >= 0) {
         return (x + (1 << (FRACTIONAL_BITS - 1))) >> FRACTIONAL_BITS;
     } else {
         return (x - (1 << (FRACTIONAL_BITS - 1))) >> FRACTIONAL_BITS;
     }
+    
 }
 
 // Add two fixed-point numbers
